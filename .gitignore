@@ -14,6 +14,7 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+infra/.terraform/
 
 # Go モジュール
 /go/
