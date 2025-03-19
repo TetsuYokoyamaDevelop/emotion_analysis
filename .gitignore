@@ -1,0 +1,33 @@
+# バイナリファイル
+*.exe
+*.dll
+*.so
+*.dylib
+myapp
+
+# OS関連
+.DS_Store
+Thumbs.db
+
+# IDE / エディタ
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Go モジュール
+/go/
+vendor/
+
+# Go ビルドファイル
+*.log
+*.out
+*.test
+*.cover
+
+# Docker関連
+docker-compose.override.yml
+.env
+.env.local
+.env.*.local
+.env.prd
