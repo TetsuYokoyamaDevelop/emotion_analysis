@@ -1,5 +1,5 @@
 # ベースイメージとして公式のGolangイメージを使用
-FROM golang:1.21 AS builder
+FROM golang:1.23 AS builder
 
 # 作業ディレクトリを設定
 WORKDIR /app
