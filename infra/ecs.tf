@@ -26,7 +26,7 @@ resource "aws_ecs_task_definition" "app_task" {
 }
 
 resource "aws_ecs_service" "app_service" {
-  name            = "emotion_analysis-service"
+  name            = "my-go-app-service"
   cluster         = aws_ecs_cluster.app_cluster.id
   task_definition = aws_ecs_task_definition.app_task.arn
   desired_count   = 1
@@ -37,4 +37,12 @@ resource "aws_ecs_service" "app_service" {
     security_groups  = [aws_security_group.app_sg.id]
     assign_public_ip = true
   }
+
+  load_balancer {
+    target_group_arn = aws_lb_target_group.ecs_tg.arn
+    container_name   = "app"
+    container_port   = 8080
+  }
+
+  depends_on = [aws_lb_listener.ecs_http]
 }
