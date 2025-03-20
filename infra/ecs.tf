@@ -17,10 +17,18 @@ resource "aws_ecs_task_definition" "app_task" {
       essential = true
       portMappings = [
         {
-          containerPort = 8080
-          hostPort      = 8080
+          containerPort = 3000  # 8080から3000に変更
+          hostPort      = 3000  # 8080から3000に変更
         }
       ]
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-group"         = "/ecs/emotion_analysis"
+          "awslogs-region"        = "ap-northeast-1"
+          "awslogs-stream-prefix" = "ecs"
+        }
+      }
     }
   ])
 }
@@ -41,8 +49,15 @@ resource "aws_ecs_service" "app_service" {
   load_balancer {
     target_group_arn = aws_lb_target_group.ecs_tg.arn
     container_name   = "app"
-    container_port   = 8080
+    container_port   = 3000  # 8080から3000に変更
   }
 
-  depends_on = [aws_lb_listener.ecs_http]
+  # この行を追加して、サービスがリスナーとターゲットグループに依存していることを明示する
+  depends_on = [aws_lb_listener.ecs_http, aws_lb_target_group.ecs_tg]
+}
+
+# CloudWatch Logsグループの追加
+resource "aws_cloudwatch_log_group" "ecs_logs" {
+  name              = "/ecs/emotion_analysis"
+  retention_in_days = 30
 }
