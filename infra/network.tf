@@ -33,8 +33,8 @@ resource "aws_security_group" "app_sg" {
   vpc_id      = aws_vpc.main.id
 
   ingress {
-    from_port   = 80
-    to_port     = 80
+    from_port   = 3000  # 80から3000に変更
+    to_port     = 3000  # 80から3000に変更
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }

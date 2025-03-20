@@ -10,7 +10,7 @@ resource "aws_lb" "ecs_alb" {
 
 resource "aws_lb_target_group" "ecs_tg" {
   name     = "ecs-target-group"
-  port     = 80
+  port     = 3000  # 8080から3000に変更
   protocol = "HTTP"
   vpc_id   = aws_vpc.main.id
   target_type = "ip"
