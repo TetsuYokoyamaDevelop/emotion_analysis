@@ -13,5 +13,5 @@ func main() {
 			"message": "hello world",
 		})
 	})
-	engine.Run(":3000")
+	engine.Run("0.0.0.0:3000") // すべてのネットワークインターフェースでリッスン
 }
