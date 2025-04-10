@@ -16,7 +16,9 @@ WORKDIR /app
 COPY . .
 
 # アプリケーションをビルド
-RUN go build -o myapp
+RUN go build -o myapp ./cmd/emotion_analysis
 
 # 実行可能ファイルをデフォルトのコマンドとして設定
 CMD ["./myapp"]
+
+EXPOSE 3000
