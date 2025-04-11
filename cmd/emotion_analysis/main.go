@@ -1,17 +1,8 @@
 package main
 
-import (
-	"net/http"
-
-	"github.com/gin-gonic/gin"
-)
+import "github.com/TetsuYokoyamaDevelop/emotion_analysis.git/routes"
 
 func main() {
-	engine := gin.Default()
-	engine.GET("/", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
-			"message": "hello world",
-		})
-	})
+	engine := routes.SetupRouter()
 	engine.Run("0.0.0.0:3000")
 }
