@@ -3,6 +3,7 @@ package routes
 import (
 	"net/http"
 
+	"github.com/TetsuYokoyamaDevelop/emotion_analysis.git/internal/handler"
 	"github.com/gin-gonic/gin"
 )
 
@@ -14,6 +15,7 @@ func SetupRouter() *gin.Engine {
 			"message": "hello world",
 		})
 	})
+	r.POST("/analyze", handler.AnalyzeHandler)
 
 	return r
 }
