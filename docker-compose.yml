@@ -1,7 +1,33 @@
-version: '3'
+version: '3.8' # ←ここ重要、3.0だと healthcheck無視される
+
 services:
+  db:
+    image: mysql:8.0
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=password
+      - MYSQL_DATABASE=emotion_analysis_dev
+    volumes:
+      - db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   app:
     build: .
     ports:
-      - "3000:3000" # ← ホスト:コンテナ
-    command: ./myapp
+      - "3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - DB_HOST=db
+      - DB_USER=root
+      - DB_PASS=password
+      - DB_NAME=emotion_analysis_dev
+
+volumes:
+  db-data:
