@@ -4,32 +4,62 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
+	"time"
 
-	"github.com/TetsuYokoyamaDevelop/emotion_analysis.git/internal/model"
 	"github.com/TetsuYokoyamaDevelop/emotion_analysis.git/routes"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
 
-// データベース接続の初期化
+// 環境変数を取得（デフォルト値対応）
+func getEnv(key, defaultValue string) string {
+	value := os.Getenv(key)
+	if value == "" {
+		return defaultValue
+	}
+	return value
+}
+
+// 現在の環境を取得
+func getEnvironment() string {
+	return strings.ToLower(getEnv("APP_ENV", "development"))
+}
+
 func initDB() *gorm.DB {
-	// 環境変数からDB接続情報を取得
-	dbHost := os.Getenv("DB_HOST")
-	dbUser := os.Getenv("DB_USER")
-	dbPass := os.Getenv("DB_PASS")
-	dbName := os.Getenv("DB_NAME")
+	// 環境変数から取得（デフォルト値あり）
+	dbHost := getEnv("DB_HOST", "db")
+	dbPort := getEnv("DB_PORT", "3306")
+	dbUser := getEnv("DB_USER", "root")
+	dbPass := getEnv("DB_PASS", "password")
+	dbName := getEnv("DB_NAME", "emotion_analysis_dev")
 
-	dsn := dbUser + ":" + dbPass + "@tcp(" + dbHost + ":3306)/" + dbName + "?charset=utf8mb4&parseTime=True&loc=Local"
+	// 環境に応じたログ出力
+	env := getEnvironment()
+	log.Printf("Environment: %s", env)
+	log.Printf("Connecting to database: %s@%s:%s/%s", dbUser, dbHost, dbPort, dbName)
 
-	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
-	if err != nil {
-		log.Fatalf("Failed to connect to database: %v", err)
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
+		dbUser, dbPass, dbHost, dbPort, dbName)
+
+	// 再試行ロジックを追加
+	var db *gorm.DB
+	var err error
+	maxRetries := 5
+	for i := 0; i < maxRetries; i++ {
+		log.Printf("Attempt %d to connect to the database", i+1)
+		db, err = gorm.Open(mysql.Open(dsn), &gorm.Config{})
+		if err == nil {
+			log.Printf("Successfully connected to the database")
+			return db
+		}
+		log.Printf("Failed to connect to database: %v", err)
+		log.Printf("Retrying in 5 seconds...")
+		time.Sleep(5 * time.Second)
 	}
 
-	// マイグレーション
-	db.AutoMigrate(&model.User{}, &model.Message{})
-
-	return db
+	log.Fatalf("Failed to connect to database after %d attempts: %v", maxRetries, err)
+	return nil
 }
 
 func main() {
