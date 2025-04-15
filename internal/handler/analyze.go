@@ -10,12 +10,12 @@ import (
 
 // ここでPOST/analyzeを受ける
 func AnalyzeHandler(c *gin.Context) {
-	var input model.AnalyzeRequest
+	var input model.Message
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		return
 	}
 
-	result := service.AnalyzeText(input.Text)
+	result := service.AnalyzeText(input.Content)
 	c.JSON(http.StatusOK, result)
 }
