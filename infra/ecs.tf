@@ -7,6 +7,7 @@ resource "aws_ecs_task_definition" "app_task" {
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
   execution_role_arn       = aws_iam_role.ecs_task_execution.arn
+  task_role_arn            = aws_iam_role.ecs_task_execution.arn
   cpu                      = "256"
   memory                   = "512"
 
@@ -17,8 +18,39 @@ resource "aws_ecs_task_definition" "app_task" {
       essential = true
       portMappings = [
         {
-          containerPort = 3000  # 8080から3000に変更
-          hostPort      = 3000  # 8080から3000に変更
+          containerPort = 3000
+          hostPort      = 3000
+        }
+      ]
+      # 環境変数（非機密）
+      environment = [
+        {
+          name  = "APP_ENV",
+          value = "production"
+        }
+      ]
+      
+      # シークレット（機密情報）
+      secrets = [
+        {
+          name      = "DB_HOST",
+          valueFrom = "${aws_secretsmanager_secret.db_credentials.arn}:host::"
+        },
+        {
+          name      = "DB_PORT",
+          valueFrom = "${aws_secretsmanager_secret.db_credentials.arn}:port::"
+        },
+        {
+          name      = "DB_NAME",
+          valueFrom = "${aws_secretsmanager_secret.db_credentials.arn}:dbname::"
+        },
+        {
+          name      = "DB_USER",
+          valueFrom = "${aws_secretsmanager_secret.db_credentials.arn}:username::"
+        },
+        {
+          name      = "DB_PASS",
+          valueFrom = "${aws_secretsmanager_secret.db_credentials.arn}:password::"
         }
       ]
       logConfiguration = {
@@ -49,10 +81,9 @@ resource "aws_ecs_service" "app_service" {
   load_balancer {
     target_group_arn = aws_lb_target_group.ecs_tg.arn
     container_name   = "app"
-    container_port   = 3000  # 8080から3000に変更
+    container_port   = 3000
   }
 
-  # この行を追加して、サービスがリスナーとターゲットグループに依存していることを明示する
   depends_on = [aws_lb_listener.ecs_http, aws_lb_target_group.ecs_tg]
 }
 
