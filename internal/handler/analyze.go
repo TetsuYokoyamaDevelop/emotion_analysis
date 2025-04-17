@@ -16,6 +16,6 @@ func AnalyzeHandler(c *gin.Context) {
 		return
 	}
 
-	result := service.AnalyzeText(input.Content)
+	result := service.AnalyzeText(input.Text)
 	c.JSON(http.StatusOK, result)
 }

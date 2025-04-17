@@ -1,0 +1,29 @@
+{
+    "family": "emotion_analysis-task",
+    "networkMode": "awsvpc",
+    "requiresCompatibilities": ["FARGATE"],
+    "cpu": "256",
+    "memory": "512",
+    "executionRoleArn": "${ECS_EXECUTION_ROLE_ARN}",
+    "containerDefinitions": [
+      {
+        "name": "emotion_analysis",
+        "image": "${AWS_ECR_REPO}:latest",
+        "essential": true,
+        "portMappings": [
+          {
+            "containerPort": 3000,
+            "protocol": "tcp"
+          }
+        ],
+        "environment": [
+          { "name": "DB_HOST", "value": "${DB_HOST}" },
+          { "name": "DB_USER", "value": "${DB_USER}" },
+          { "name": "DB_PASS", "value": "${DB_PASS}" },
+          { "name": "DB_NAME", "value": "${DB_NAME}" },
+          { "name": "OPEN_AI_API_KEY", "value": "${OPEN_AI_API_KEY}" }
+        ]
+      }
+    ]
+  }
+  
