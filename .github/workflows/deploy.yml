@@ -8,6 +8,14 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      DB_HOST: ${{ secrets.DB_HOST }}
+      DB_USER: ${{ secrets.DB_USER }}
+      DB_PASS: ${{ secrets.DB_PASS }}
+      DB_NAME: ${{ secrets.DB_NAME }}
+      OPEN_AI_API_KEY: ${{ secrets.OPEN_AI_API_KEY }}
+      AWS_ECR_REPO: ${{ secrets.AWS_ECR_REPO }}
+      ECS_EXECUTION_ROLE_ARN: ${{ secrets.ECS_EXECUTION_ROLE_ARN }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
@@ -29,6 +37,18 @@ jobs:
           docker tag emotion_analysis:latest ${{ secrets.AWS_ECR_REPO }}:latest
           docker push ${{ secrets.AWS_ECR_REPO }}:latest
 
+      - name: Render ECS task definition from template
+        run: |
+          envsubst < ecs-task-def-template.json > task-def.json
+          cat task-def.json  # オプション：デバッグ用に出力
+
+      - name: Register new ECS task definition
+        run: |
+          aws ecs register-task-definition --cli-input-json file://task-def.json
+
       - name: Deploy to ECS
         run: |
-          aws ecs update-service --cluster emotion_analysis-cluster --service emotion_analysis-service --force-new-deployment
+          aws ecs update-service \
+            --cluster emotion_analysis-cluster \
+            --service emotion_analysis-service \
+            --force-new-deployment

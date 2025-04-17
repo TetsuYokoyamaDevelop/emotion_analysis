@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/joho/godotenv"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
@@ -26,6 +27,7 @@ func getEnvironment() string {
 }
 
 func InitDB() *gorm.DB {
+	_ = godotenv.Load()
 	// 環境変数から取得（デフォルト値あり）
 	dbHost := getEnv("DB_HOST", "db")
 	dbPort := getEnv("DB_PORT", "3306")
