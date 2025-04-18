@@ -11,61 +11,36 @@ import (
 	"github.com/TetsuYokoyamaDevelop/emotion_analysis.git/internal/model"
 )
 
-func AnalyzeText(text string) model.Message {
-	apiKey := os.Getenv("OPENAI_API_KEY")
+func AnalyzeText(text string) model.SentimentResult {
+	apiKey := os.Getenv("OPEN_AI_API_KEY")
 	if apiKey == "" {
 		fmt.Println("APIキーが設定されてません")
-		return model.Message{Text: "APIキーが設定されていません"}
+		return model.SentimentResult{Explanation: "APIキーが設定されていません"}
 	}
 
-	payload := map[string]interface{}{
-		"model": "gpt-3.5-turbo-0125",
-		"messages": []map[string]string{
-			{
-				"role":    "system",
-				"content": "あなたは入力された文章の感情を分析し、感情の種類（positive/neutral/negative）、スコア（-1から1）、説明、そして感情に応じたメッセージを返してください。ポジティブな場合はユーザーを褒める言葉を、ネガティブな場合は前向きになれるアドバイスを、日本語で返してください。",
-			},
-			{
-				"role":    "user",
-				"content": text,
-			},
+	// JSONテンプレート読み込み
+	templatePath := "internal/service/prompt_template.json"
+	data, err := os.ReadFile(templatePath)
+	if err != nil {
+		fmt.Println("テンプレート読み込み失敗:", err)
+		return model.SentimentResult{Explanation: "テンプレートファイル読み込みに失敗しました"}
+	}
+
+	var payload map[string]interface{}
+	if err := json.Unmarshal(data, &payload); err != nil {
+		fmt.Println("テンプレートパース失敗:", err)
+		return model.SentimentResult{Explanation: "テンプレートパースに失敗しました"}
+	}
+
+	// メッセージ追加
+	payload["messages"] = []map[string]string{
+		{
+			"role":    "system",
+			"content": "あなたは入力された文章の感情を分析し、感情の種類（positive/neutral/negative）、スコア（-1から1）、説明、そして感情に応じたメッセージを返してください。ポジティブな場合はユーザーを褒める言葉を、ネガティブな場合は前向きになれるアドバイスを、日本語で返してください。",
 		},
-		"tools": []map[string]interface{}{
-			{
-				"type": "function",
-				"function": map[string]interface{}{
-					"name":        "analyze_sentiment_with_message",
-					"description": "感情分析を行い、スコア・説明・適切なフィードバック（褒めorアドバイス）を返します。",
-					"parameters": map[string]interface{}{
-						"type": "object",
-						"properties": map[string]interface{}{
-							"sentiment": map[string]interface{}{
-								"type": "string",
-								"enum": []string{"positive", "neutral", "negative"},
-							},
-							"sentimentScore": map[string]interface{}{
-								"type":        "number",
-								"description": "-1から1のスコア",
-							},
-							"explanation": map[string]interface{}{
-								"type":        "string",
-								"description": "なぜこの感情とスコアになったか",
-							},
-							"praise_or_advice": map[string]interface{}{
-								"type":        "string",
-								"description": "ポジティブな場合はユーザーを褒める。ネガティブな場合は前向きになれるアドバイス。",
-							},
-						},
-						"required": []string{"sentiment", "sentimentScore", "explanation", "praise_or_advice"},
-					},
-				},
-			},
-		},
-		"tool_choice": map[string]interface{}{
-			"type": "function",
-			"function": map[string]string{
-				"name": "analyze_sentiment_with_message",
-			},
+		{
+			"role":    "user",
+			"content": text,
 		},
 	}
 
@@ -79,7 +54,7 @@ func AnalyzeText(text string) model.Message {
 	resp, err := client.Do(req)
 	if err != nil {
 		fmt.Println("OpenAI APIエラー:", err)
-		return model.Message{Text: "OpenAI API呼び出しに失敗しました"}
+		return model.SentimentResult{Explanation: "OpenAI API呼び出しに失敗しました"}
 	}
 	defer resp.Body.Close()
 
@@ -88,13 +63,21 @@ func AnalyzeText(text string) model.Message {
 	var aiResp model.OpenAIResponse
 	if err := json.Unmarshal(body, &aiResp); err != nil {
 		fmt.Println("JSONパース失敗:", err)
-		return model.Message{Text: "レスポンスの解析に失敗しました"}
+		return model.SentimentResult{Explanation: "レスポンスの解析に失敗しました"}
 	}
 
-	var result model.Message
-	if err := json.Unmarshal([]byte(aiResp.Choices[0].Message.FunctionCall.Arguments), &result); err != nil {
-		fmt.Println("結果のUnmarshal失敗:", err)
-		return model.Message{Text: "出力の整形に失敗しました"}
+	raw := aiResp.Choices[0].Message.ToolCalls[0].Function.Arguments
+
+	var result model.SentimentResult
+	if err := json.Unmarshal([]byte(raw), &result); err != nil {
+		fmt.Println("Unmarshal失敗:", err)
+		fmt.Println("中身:", raw)
+		return model.SentimentResult{
+			Explanation:    "出力の整形に失敗しました",
+			Sentiment:      "unknown",
+			SentimentScore: 0,
+			PraiseOrAdvice: "",
+		}
 	}
 
 	return result

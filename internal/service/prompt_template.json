@@ -1,0 +1,42 @@
+{
+    "model": "gpt-3.5-turbo-0125",
+    "messages": [],
+    "tools": [
+      {
+        "type": "function",
+        "function": {
+          "name": "analyze_sentiment_with_message",
+          "description": "感情分析を行い、スコア・説明・適切なフィードバック（褒めorアドバイス）を返します。",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "sentiment": {
+                "type": "string",
+                "enum": ["positive", "neutral", "negative"]
+              },
+              "sentimentScore": {
+                "type": "number",
+                "description": "-1から1のスコア"
+              },
+              "explanation": {
+                "type": "string",
+                "description": "なぜこの感情とスコアになったか"
+              },
+              "praise_or_advice": {
+                "type": "string",
+                "description": "ポジティブな場合はユーザーを褒める。ネガティブな場合は前向きになれるアドバイス。"
+              }
+            },
+            "required": ["sentiment", "sentimentScore", "explanation", "praise_or_advice"]
+          }
+        }
+      }
+    ],
+    "tool_choice": {
+      "type": "function",
+      "function": {
+        "name": "analyze_sentiment_with_message"
+      }
+    }
+  }
+  

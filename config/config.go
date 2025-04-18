@@ -26,8 +26,16 @@ func getEnvironment() string {
 	return strings.ToLower(getEnv("APP_ENV", "development"))
 }
 
+// LoadEnv 環境変数を.envファイルから読み込む
+func LoadEnv() {
+	err := godotenv.Load()
+	if err != nil {
+		log.Printf("警告: .envファイルが見つからないか、読み込めませんでした")
+	}
+	log.Printf("環境変数を読み込みました")
+}
+
 func InitDB() *gorm.DB {
-	_ = godotenv.Load()
 	// 環境変数から取得（デフォルト値あり）
 	dbHost := getEnv("DB_HOST", "db")
 	dbPort := getEnv("DB_PORT", "3306")

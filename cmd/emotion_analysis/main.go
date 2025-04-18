@@ -8,6 +8,7 @@ import (
 )
 
 func main() {
+	config.LoadEnv()
 	db := config.InitDB()
 	fmt.Println(db)
 	engine := routes.SetupRouter()

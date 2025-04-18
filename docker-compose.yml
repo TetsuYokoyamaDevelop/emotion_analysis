@@ -28,6 +28,5 @@ services:
       - DB_USER=root
       - DB_PASS=password
       - DB_NAME=emotion_analysis_dev
-
 volumes:
   db-data:
