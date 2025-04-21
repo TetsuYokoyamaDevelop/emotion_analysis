@@ -1,10 +1,8 @@
 name: Deploy to ECS
-
 on:
   push:
     branches:
       - main
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -20,39 +18,71 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
-
+      
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ap-northeast-1
-
+      
       - name: Login to Amazon ECR
         run: |
           aws ecr get-login-password --region ap-northeast-1 | docker login --username AWS --password-stdin ${{ secrets.AWS_ECR_REPO }}
-
+      
       - name: Build and push Docker image
         run: |
           docker build --no-cache -t emotion_analysis .
           docker tag emotion_analysis:latest ${{ secrets.AWS_ECR_REPO }}:latest
           docker push ${{ secrets.AWS_ECR_REPO }}:latest
-
-      - name: Render ECS task definition from template
+      
+      - name: Create task definition with direct values
         run: |
-          envsubst '${DB_HOST} ${DB_USER} ${DB_PASS} ${DB_NAME} ${OPENAI_KEY} ${AWS_ECR_REPO} ${ECS_EXECUTION_ROLE_ARN}' < ecs-task-def-template.json > task-def.json
-
+          cat << 'EOF' > task-def-direct.json
+          {
+            "family": "emotion_analysis-task",
+            "networkMode": "awsvpc",
+            "requiresCompatibilities": ["FARGATE"],
+            "cpu": "256",
+            "memory": "512",
+            "executionRoleArn": "$ECS_EXECUTION_ROLE_ARN",
+            "containerDefinitions": [
+              {
+                "name": "emotion_analysis",
+                "image": "$AWS_ECR_REPO:latest",
+                "essential": true,
+                "portMappings": [
+                  {
+                    "containerPort": 3000,
+                    "protocol": "tcp"
+                  }
+                ],
+                "environment": [
+                  { "name": "APP_ENV", "value": "production" },
+                  { "name": "DB_HOST", "value": "$DB_HOST" },
+                  { "name": "DB_USER", "value": "$DB_USER" },
+                  { "name": "DB_PASS", "value": "$DB_PASS" },
+                  { "name": "DB_NAME", "value": "$DB_NAME" },
+                  { "name": "OPENAI_KEY", "value": "$OPENAI_KEY" }
+                ]
+              }
+            ]
+          }
+          EOF
+          envsubst < task-def-direct.json > task-def.json
+          cat task-def.json
+      
       - name: Register new ECS task definition
         run: |
           aws ecs register-task-definition --cli-input-json file://task-def.json
-
+      
       - name: Deploy to ECS
         run: |
           aws ecs update-service \
             --cluster emotion_analysis-cluster \
             --service emotion_analysis-service \
             --force-new-deployment
-
+      
       - name: Verify deployed task definition
         run: |
           echo "Currently active task definition:"
@@ -60,13 +90,13 @@ jobs:
             --cluster emotion_analysis-cluster \
             --services emotion_analysis-service \
             --query "services[0].taskDefinition"
-
+          
           echo "Environment variables in active task:"
           ACTIVE_TASK=$(aws ecs describe-services \
             --cluster emotion_analysis-cluster \
             --services emotion_analysis-service \
             --query "services[0].taskDefinition" --output text)
-
+          
           aws ecs describe-task-definition \
             --task-definition $ACTIVE_TASK \
             --query "taskDefinition.containerDefinitions[0].environment"
