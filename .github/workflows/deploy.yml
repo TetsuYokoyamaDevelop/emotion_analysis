@@ -40,16 +40,7 @@ jobs:
 
       - name: Render ECS task definition from template
         run: |
-          envsubst < ecs-task-def-template.json > task-def.json
-          echo "===== DEBUG: task-def.json ====="
-          cat task-def.json
-          echo "================================"
-
-      - name: Debug environment variables
-        run: |
-          echo "OPENAI_KEY is set: $([[ -n "$OPENAI_KEY" ]] && echo 'YES' || echo 'NO')"
-          echo "Length of OPENAI_KEY: ${#OPENAI_KEY}"
-          echo "First 4 chars: ${OPENAI_KEY:0:4}"
+          envsubst '${DB_HOST} ${DB_USER} ${DB_PASS} ${DB_NAME} ${OPENAI_KEY} ${AWS_ECR_REPO} ${ECS_EXECUTION_ROLE_ARN}' < ecs-task-def-template.json > task-def.json
 
       - name: Register new ECS task definition
         run: |
@@ -61,3 +52,21 @@ jobs:
             --cluster emotion_analysis-cluster \
             --service emotion_analysis-service \
             --force-new-deployment
+
+      - name: Verify deployed task definition
+        run: |
+          echo "Currently active task definition:"
+          aws ecs describe-services \
+            --cluster emotion_analysis-cluster \
+            --services emotion_analysis-service \
+            --query "services[0].taskDefinition"
+
+          echo "Environment variables in active task:"
+          ACTIVE_TASK=$(aws ecs describe-services \
+            --cluster emotion_analysis-cluster \
+            --services emotion_analysis-service \
+            --query "services[0].taskDefinition" --output text)
+
+          aws ecs describe-task-definition \
+            --task-definition $ACTIVE_TASK \
+            --query "taskDefinition.containerDefinitions[0].environment"
