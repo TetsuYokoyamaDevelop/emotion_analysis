@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       APP_ENV: production
-      OPEN_AI_API_KEY: ${{ secrets.OPEN_AI_API_KEY }}
+      OPEN_AI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       DB_HOST: ${{ secrets.DB_HOST }}
       DB_USER: ${{ secrets.DB_USER }}
       DB_PASS: ${{ secrets.DB_PASS }}
@@ -38,15 +38,13 @@ jobs:
           docker tag emotion_analysis:latest ${{ secrets.AWS_ECR_REPO }}:latest
           docker push ${{ secrets.AWS_ECR_REPO }}:latest
 
-      - name: Render ECS task definition
+      - name: Render ECS task definition from template
         run: |
-          envsubst '${DB_HOST} ${DB_USER} ${DB_PASS} ${DB_NAME} ${OPEN_AI_API_KEY} ${AWS_ECR_REPO} ${ECS_EXECUTION_ROLE_ARN}' < ecs-task-def-template.json > task-def.json
-          if grep -q "OPEN_AI_API_KEY" task-def.json; then
-            echo "::notice title=Env Var Check::OPEN_AI_API_KEY is present in task-def.json"
-          else
-            echo "::error title=Missing Var::OPEN_AI_API_KEY is missing or empty"
-            exit 1
-          fi
+          envsubst < ecs-task-def-template.json > task-def.json
+          echo "===== DEBUG: task-def.json ====="
+          cat task-def.json
+          echo "================================"
+
       - name: Register new ECS task definition
         run: |
           aws ecs register-task-definition --cli-input-json file://task-def.json
