@@ -34,7 +34,7 @@ jobs:
 
       - name: Build and push Docker image
         run: |
-          docker build -t emotion_analysis .
+          docker build --no-cache -t emotion_analysis .
           docker tag emotion_analysis:latest ${{ secrets.AWS_ECR_REPO }}:latest
           docker push ${{ secrets.AWS_ECR_REPO }}:latest
 
