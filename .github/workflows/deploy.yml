@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       APP_ENV: production
-      OPEN_AI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      OPEN_AI_API_KEY: ${{ secrets.OPENAI_KEY }}
       DB_HOST: ${{ secrets.DB_HOST }}
       DB_USER: ${{ secrets.DB_USER }}
       DB_PASS: ${{ secrets.DB_PASS }}
