@@ -10,11 +10,11 @@ jobs:
     runs-on: ubuntu-latest
     env:
       APP_ENV: production
+      OPEN_AI_API_KEY: ${{ secrets.OPEN_AI_API_KEY }}
       DB_HOST: ${{ secrets.DB_HOST }}
       DB_USER: ${{ secrets.DB_USER }}
       DB_PASS: ${{ secrets.DB_PASS }}
       DB_NAME: ${{ secrets.DB_NAME }}
-      OPEN_AI_API_KEY: ${{ secrets.OPEN_AI_API_KEY }}
       AWS_ECR_REPO: ${{ secrets.AWS_ECR_REPO }}
       ECS_EXECUTION_ROLE_ARN: ${{ secrets.ECS_EXECUTION_ROLE_ARN }}
     steps:
