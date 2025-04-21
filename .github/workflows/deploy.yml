@@ -45,6 +45,12 @@ jobs:
           cat task-def.json
           echo "================================"
 
+      - name: Debug environment variables
+        run: |
+          echo "OPENAI_KEY is set: $([[ -n "$OPENAI_KEY" ]] && echo 'YES' || echo 'NO')"
+          echo "Length of OPENAI_KEY: ${#OPENAI_KEY}"
+          echo "First 4 chars: ${OPENAI_KEY:0:4}"
+
       - name: Register new ECS task definition
         run: |
           aws ecs register-task-definition --cli-input-json file://task-def.json
