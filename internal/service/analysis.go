@@ -13,7 +13,7 @@ import (
 )
 
 func AnalyzeText(text string) model.SentimentResult {
-	apiKey := os.Getenv("OPENAI_KEY")
+	apiKey := os.Getenv("CUSTOM_OPENAI_KEY")
 	if apiKey == "" {
 		fmt.Println("APIキーが設定されてません")
 		return model.SentimentResult{Explanation: "APIキーが設定されていません"}
