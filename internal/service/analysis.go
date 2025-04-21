@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strconv"
 
 	"github.com/TetsuYokoyamaDevelop/emotion_analysis.git/internal/model"
 )
@@ -35,14 +36,25 @@ func AnalyzeText(text string) model.SentimentResult {
 	// メッセージ追加
 	payload["messages"] = []map[string]string{
 		{
-			"role":    "system",
-			"content": "あなたは入力された文章の感情を分析し、感情の種類（positive/neutral/negative）、スコア（-1から1）、説明、そして感情に応じたメッセージを返してください。ポジティブな場合はユーザーを褒める言葉を、ネガティブな場合は前向きになれるアドバイスを、日本語で返してください。",
+			"role": "system",
+			"content": `あなたは、入力された日本語の文章からその感情を深く分析するAIカウンセラーです。
+
+以下の4項目をJSON形式で返してください：
+
+1. sentiment（感情の種類）：positive / neutral / negative
+2. sentimentScore（感情スコア）：-1から1の実数値（小数点2桁まで）
+3. explanation（詳細な説明）：1000文字以上で、文脈・語彙・心理状態を深く考察。
+4. praise_or_advice（フィードバック）：1000文字以上の具体的な褒め言葉または前向きなアドバイス。
+
+出力はエスケープされていないJSONオブジェクトとして返してください。`,
 		},
 		{
 			"role":    "user",
 			"content": text,
 		},
 	}
+
+	payload["max_tokens"] = 1600 // 長文対応のためちょい増やし
 
 	jsonPayload, _ := json.Marshal(payload)
 
@@ -68,10 +80,17 @@ func AnalyzeText(text string) model.SentimentResult {
 
 	raw := aiResp.Choices[0].Message.ToolCalls[0].Function.Arguments
 
+	// Unquote（もしエスケープされてたら）
+	unquoted, err := strconv.Unquote(raw)
+	if err != nil {
+		// Unquote しなくてよかった場合はそのまま raw を使う
+		unquoted = raw
+	}
+
 	var result model.SentimentResult
-	if err := json.Unmarshal([]byte(raw), &result); err != nil {
+	if err := json.Unmarshal([]byte(unquoted), &result); err != nil {
 		fmt.Println("Unmarshal失敗:", err)
-		fmt.Println("中身:", raw)
+		fmt.Println("中身:", unquoted)
 		return model.SentimentResult{
 			Explanation:    "出力の整形に失敗しました",
 			Sentiment:      "unknown",
