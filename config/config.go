@@ -28,11 +28,14 @@ func getEnvironment() string {
 
 // LoadEnv 環境変数を.envファイルから読み込む
 func LoadEnv() {
-	err := godotenv.Load()
-	if err != nil {
-		log.Printf("警告: .envファイルが見つからないか、読み込めませんでした")
+	if os.Getenv("APP_ENV") != "production" {
+		err := godotenv.Load()
+		if err != nil {
+			log.Printf("警告: .envファイルが見つからないか、読み込めませんでした")
+		} else {
+			log.Printf(".envファイルを読み込みました")
+		}
 	}
-	log.Printf("環境変数を読み込みました")
 }
 
 func InitDB() *gorm.DB {
