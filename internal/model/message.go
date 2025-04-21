@@ -6,7 +6,6 @@ import "time"
 type Message struct {
 	ID        uint      `gorm:"primaryKey" json:"id"`
 	UserID    uint      `gorm:"not null;index" json:"user_id"`
-	User      User      `gorm:"foreignKey:UserID" json:"user"` // 埋め込むかは運用次第
 	Role      string    `gorm:"size:20;not null;check:role IN ('user', 'assistant')" json:"role"`
 	Text      string    `gorm:"type:text;not null" json:"text"`
 	Score     float64   `gorm:"type:float" json:"score"`
