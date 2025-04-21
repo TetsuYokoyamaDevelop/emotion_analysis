@@ -36,20 +36,31 @@ jobs:
           docker tag emotion_analysis:latest ${{ secrets.AWS_ECR_REPO }}:latest
           docker push ${{ secrets.AWS_ECR_REPO }}:latest
       
+      - name: Debug Environment Variables
+        run: |
+          echo "環境変数の状態確認:"
+          echo "CUSTOM_OPENAI_KEY is set: $([[ -n "$CUSTOM_OPENAI_KEY" ]] && echo 'YES' || echo 'NO')"
+          echo "Length of CUSTOM_OPENAI_KEY: ${#CUSTOM_OPENAI_KEY}"
+          echo "First 4 chars: ${CUSTOM_OPENAI_KEY:0:4}"
+      
       - name: Create task definition with direct values
         run: |
-          cat << 'EOF' > task-def-direct.json
+          # 環境変数をJSONエスケープ（特に重要なAPIキー）
+          ESCAPED_OPENAI_KEY=$(echo "$CUSTOM_OPENAI_KEY" | sed 's/"/\\"/g')
+          export ESCAPED_OPENAI_KEY
+          
+          cat << EOF > task-def.json
           {
             "family": "emotion_analysis-task",
             "networkMode": "awsvpc",
             "requiresCompatibilities": ["FARGATE"],
             "cpu": "256",
             "memory": "512",
-            "executionRoleArn": "$ECS_EXECUTION_ROLE_ARN",
+            "executionRoleArn": "${ECS_EXECUTION_ROLE_ARN}",
             "containerDefinitions": [
               {
                 "name": "emotion_analysis",
-                "image": "$AWS_ECR_REPO:latest",
+                "image": "${AWS_ECR_REPO}:latest",
                 "essential": true,
                 "portMappings": [
                   {
@@ -59,17 +70,26 @@ jobs:
                 ],
                 "environment": [
                   { "name": "APP_ENV", "value": "production" },
-                  { "name": "DB_HOST", "value": "$DB_HOST" },
-                  { "name": "DB_USER", "value": "$DB_USER" },
-                  { "name": "DB_PASS", "value": "$DB_PASS" },
-                  { "name": "DB_NAME", "value": "$DB_NAME" },
-                  { "name": "CUSTOM_OPENAI_KEY", "value": "$CUSTOM_OPENAI_KEY" }
-                ]
+                  { "name": "DB_HOST", "value": "${DB_HOST}" },
+                  { "name": "DB_USER", "value": "${DB_USER}" },
+                  { "name": "DB_PASS", "value": "${DB_PASS}" },
+                  { "name": "DB_NAME", "value": "${DB_NAME}" },
+                  { "name": "CUSTOM_OPENAI_KEY", "value": "${ESCAPED_OPENAI_KEY}" }
+                ],
+                "logConfiguration": {
+                  "logDriver": "awslogs",
+                  "options": {
+                    "awslogs-group": "/ecs/emotion_analysis",
+                    "awslogs-region": "ap-northeast-1",
+                    "awslogs-stream-prefix": "ecs"
+                  }
+                }
               }
             ]
           }
           EOF
-          envsubst < task-def-direct.json > task-def.json
+          
+          echo "===== タスク定義ファイル内容確認 ====="
           cat task-def.json
       
       - name: Register new ECS task definition
@@ -78,20 +98,32 @@ jobs:
       
       - name: Deploy to ECS
         run: |
+          # 最新のタスク定義を取得して明示的に指定
+          TASK_DEF=$(aws ecs describe-task-definition --task-definition emotion_analysis-task --query 'taskDefinition.taskDefinitionArn' --output text)
+          
+          # サービスの更新（明示的にタスク定義を指定）
           aws ecs update-service \
             --cluster emotion_analysis-cluster \
             --service emotion_analysis-service \
+            --task-definition $TASK_DEF \
             --force-new-deployment
+      
+      - name: Wait for deployment to complete
+        run: |
+          echo "デプロイの完了を待機中..."
+          aws ecs wait services-stable \
+            --cluster emotion_analysis-cluster \
+            --services emotion_analysis-service
       
       - name: Verify deployed task definition
         run: |
-          echo "Currently active task definition:"
+          echo "現在アクティブなタスク定義:"
           aws ecs describe-services \
             --cluster emotion_analysis-cluster \
             --services emotion_analysis-service \
             --query "services[0].taskDefinition"
           
-          echo "Environment variables in active task:"
+          echo "アクティブタスクの環境変数:"
           ACTIVE_TASK=$(aws ecs describe-services \
             --cluster emotion_analysis-cluster \
             --services emotion_analysis-service \
@@ -100,3 +132,21 @@ jobs:
           aws ecs describe-task-definition \
             --task-definition $ACTIVE_TASK \
             --query "taskDefinition.containerDefinitions[0].environment"
+      
+      - name: Check container logs
+        run: |
+          echo "最新のコンテナログを確認中..."
+          TASK_ID=$(aws ecs list-tasks \
+            --cluster emotion_analysis-cluster \
+            --service-name emotion_analysis-service \
+            --query 'taskArns[0]' --output text | awk -F '/' '{print $NF}')
+          
+          if [ -n "$TASK_ID" ]; then
+            echo "タスクID: $TASK_ID"
+            aws ecs describe-tasks \
+              --cluster emotion_analysis-cluster \
+              --tasks $TASK_ID \
+              --query 'tasks[0].lastStatus'
+          else
+            echo "実行中のタスクが見つかりません"
+          fi
