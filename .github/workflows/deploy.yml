@@ -15,6 +15,7 @@ jobs:
       DB_NAME: ${{ secrets.DB_NAME }}
       AWS_ECR_REPO: ${{ secrets.AWS_ECR_REPO }}
       ECS_EXECUTION_ROLE_ARN: ${{ secrets.ECS_EXECUTION_ROLE_ARN }}
+      PRIVATE_API_KEY: ${{ secrets.PRIVATE_API_KEY }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
