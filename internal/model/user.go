@@ -11,6 +11,6 @@ type User struct {
 	Email     string    `gorm:"size:255;not null;unique" json:"email"`
 	Password  string    `gorm:"size:255;not null" json:"-"`
 	Messages  []Message `gorm:"foreignKey:UserID" json:"-"`
-	CreatedAt time.Time `gorm:"default:CURRENT_TIMESTAMP" json:"created_at"`
-	UpdatedAt time.Time `gorm:"default:CURRENT_TIMESTAMP" json:"updated_at"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }

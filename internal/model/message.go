@@ -12,6 +12,6 @@ type Message struct {
 	SentimentScore float64   `gorm:"type:float" json:"sentimentScore"`
 	Explanation    string    `gorm:"type:text" json:"explanation"`
 	PraiseOrAdvice string    `gorm:"type:text" json:"praise_or_advice"`
-	CreatedAt      time.Time `gorm:"default:CURRENT_TIMESTAMP" json:"created_at"`
-	UpdatedAt      time.Time `gorm:"default:CURRENT_TIMESTAMP" json:"updated_at"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
 }
