@@ -21,6 +21,10 @@ func (h *UserHandler) UserRegistHandler(c *gin.Context) {
 		return
 	}
 
-	result := service.UserRegist(user, h.DB, c)
+	result, err := service.UserRegist(user, h.DB, c)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to register user"})
+		return
+	}
 	c.JSON(http.StatusOK, result)
 }
