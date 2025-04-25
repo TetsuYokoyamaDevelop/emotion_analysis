@@ -28,9 +28,11 @@ func AuthMiddleware() gin.HandlerFunc {
 func SetupRouter(db *gorm.DB) *gin.Engine {
 	r := gin.Default()
 	userHandler := handler.UserHandler{DB: db}
+	loginHandler := handler.LoginHandler{DB: db}
 	// 保護された感情分析API
 	r.POST("/analyze", AuthMiddleware(), handler.AnalyzeHandler)
 	r.POST("/users/registration", AuthMiddleware(), userHandler.UserRegistHandler)
+	r.POST("/users/login", AuthMiddleware(), loginHandler.UserLoginHandler)
 
 	return r
 }
