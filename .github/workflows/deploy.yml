@@ -15,6 +15,7 @@ jobs:
       DB_NAME: ${{ secrets.DB_NAME }}
       AWS_ECR_REPO: ${{ secrets.AWS_ECR_REPO }}
       ECS_EXECUTION_ROLE_ARN: ${{ secrets.ECS_EXECUTION_ROLE_ARN }}
+      PRIVATE_API_KEY: ${{ secrets.PRIVATE_API_KEY }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
@@ -36,20 +37,43 @@ jobs:
           docker tag emotion_analysis:latest ${{ secrets.AWS_ECR_REPO }}:latest
           docker push ${{ secrets.AWS_ECR_REPO }}:latest
       
+      - name: Get current service definition
+        run: |
+          # 現在のサービス定義を取得して、コンテナ名を確認
+          aws ecs describe-services \
+            --cluster emotion_analysis-cluster \
+            --services emotion_analysis-service \
+            --query "services[0].deployments[0].taskDefinition" --output text > current_task_def_arn.txt
+          
+          CURRENT_TASK_DEF=$(cat current_task_def_arn.txt)
+          echo "現在のタスク定義: $CURRENT_TASK_DEF"
+          
+          # コンテナ名を取得
+          CONTAINER_NAME=$(aws ecs describe-task-definition \
+            --task-definition $CURRENT_TASK_DEF \
+            --query "taskDefinition.containerDefinitions[0].name" --output text)
+          
+          echo "使用するコンテナ名: $CONTAINER_NAME"
+          echo "CONTAINER_NAME=$CONTAINER_NAME" >> $GITHUB_ENV
+      
       - name: Create task definition with direct values
         run: |
-          cat << 'EOF' > task-def-direct.json
+          # 環境変数をJSONエスケープ
+          ESCAPED_OPENAI_KEY=$(echo "$CUSTOM_OPENAI_KEY" | sed 's/"/\\"/g')
+          export ESCAPED_OPENAI_KEY
+          
+          cat << EOF > task-def.json
           {
             "family": "emotion_analysis-task",
             "networkMode": "awsvpc",
             "requiresCompatibilities": ["FARGATE"],
             "cpu": "256",
             "memory": "512",
-            "executionRoleArn": "$ECS_EXECUTION_ROLE_ARN",
+            "executionRoleArn": "${ECS_EXECUTION_ROLE_ARN}",
             "containerDefinitions": [
               {
-                "name": "emotion_analysis",
-                "image": "$AWS_ECR_REPO:latest",
+                "name": "${CONTAINER_NAME}",
+                "image": "${AWS_ECR_REPO}:latest",
                 "essential": true,
                 "portMappings": [
                   {
@@ -59,17 +83,27 @@ jobs:
                 ],
                 "environment": [
                   { "name": "APP_ENV", "value": "production" },
-                  { "name": "DB_HOST", "value": "$DB_HOST" },
-                  { "name": "DB_USER", "value": "$DB_USER" },
-                  { "name": "DB_PASS", "value": "$DB_PASS" },
-                  { "name": "DB_NAME", "value": "$DB_NAME" },
-                  { "name": "CUSTOM_OPENAI_KEY", "value": "$CUSTOM_OPENAI_KEY" }
-                ]
+                  { "name": "DB_HOST", "value": "${DB_HOST}" },
+                  { "name": "DB_USER", "value": "${DB_USER}" },
+                  { "name": "DB_PASS", "value": "${DB_PASS}" },
+                  { "name": "DB_NAME", "value": "${DB_NAME}" },
+                  { "name": "CUSTOM_OPENAI_KEY", "value": "${ESCAPED_OPENAI_KEY}" },
+                  { "name": "PRIVATE_API_KEY", "value": "${PRIVATE_API_KEY}" }
+                ],
+                "logConfiguration": {
+                  "logDriver": "awslogs",
+                  "options": {
+                    "awslogs-group": "/ecs/emotion_analysis",
+                    "awslogs-region": "ap-northeast-1",
+                    "awslogs-stream-prefix": "ecs"
+                  }
+                }
               }
             ]
           }
           EOF
-          envsubst < task-def-direct.json > task-def.json
+          
+          echo "===== タスク定義ファイル内容確認 ====="
           cat task-def.json
       
       - name: Register new ECS task definition
@@ -78,20 +112,25 @@ jobs:
       
       - name: Deploy to ECS
         run: |
+          # 最新のタスク定義を取得
+          TASK_DEF=$(aws ecs describe-task-definition --task-definition emotion_analysis-task --query 'taskDefinition.taskDefinitionArn' --output text)
+          
+          # サービスの更新（強制デプロイ）
           aws ecs update-service \
             --cluster emotion_analysis-cluster \
             --service emotion_analysis-service \
+            --task-definition $TASK_DEF \
             --force-new-deployment
       
       - name: Verify deployed task definition
         run: |
-          echo "Currently active task definition:"
+          echo "現在アクティブなタスク定義:"
           aws ecs describe-services \
             --cluster emotion_analysis-cluster \
             --services emotion_analysis-service \
             --query "services[0].taskDefinition"
           
-          echo "Environment variables in active task:"
+          echo "アクティブタスクの環境変数:"
           ACTIVE_TASK=$(aws ecs describe-services \
             --cluster emotion_analysis-cluster \
             --services emotion_analysis-service \
