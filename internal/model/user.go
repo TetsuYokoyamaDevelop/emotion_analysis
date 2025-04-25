@@ -10,6 +10,7 @@ type User struct {
 	Username     string    `gorm:"size:100;not null;unique" json:"username"`
 	Email        string    `gorm:"size:255;not null;unique" json:"email"`
 	PasswordHash string    `gorm:"size:255;not null" json:"-"`
+	Messages     []Message `gorm:"foreignKey:UserID" json:"-"`
 	CreatedAt    time.Time `gorm:"default:CURRENT_TIMESTAMP" json:"created_at"`
 	UpdatedAt    time.Time `gorm:"default:CURRENT_TIMESTAMP" json:"updated_at"`
 }
