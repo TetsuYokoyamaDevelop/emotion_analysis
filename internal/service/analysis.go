@@ -105,27 +105,51 @@ func AnalyzeText(text string, userEmail string, db *gorm.DB) model.SentimentResu
 		}
 	}
 
-	var user model.User
-	if err := db.Where("email = ?", userEmail).First(&user).Error; err != nil {
-		fmt.Println("ユーザーIDが見つかりません:", err)
-		return model.SentimentResult{Explanation: "ユーザーIDが見つかりません"}
-	}
+	err = db.Transaction(func(tx *gorm.DB) error {
+		var user model.User
+		if err := tx.Where("email = ?", userEmail).First(&user).Error; err != nil {
+			fmt.Println("ユーザーIDが見つかりません:", err)
+			return err
+		}
 
-	msg := model.Message{
-		UserID:         user.ID, // ユーザー構造体からID取る
-		Role:           ASSISTANT_ROLE,
-		Sentiment:      result.Sentiment,
-		SentimentScore: result.SentimentScore,
-		Explanation:    result.Explanation,
-		PraiseOrAdvice: result.PraiseOrAdvice,
-	}
+		userMsg := model.Message{
+			UserID:         user.ID,
+			Role:           USER_ROLE,
+			Sentiment:      result.Sentiment,
+			SentimentScore: result.SentimentScore,
+			Explanation:    text,
+			PraiseOrAdvice: "",
+		}
 
-	// db.Saveかdb.Createで保存してね！
+		if err := tx.Select("UserID", "Role", "Sentiment", "SentimentScore", "Explanation", "PraiseOrAdvice").
+			Create(&userMsg).Error; err != nil {
+			fmt.Println("ユーザーメッセージ保存失敗:", err)
+			return err
+		}
 
-	// 必要なカラムだけ指定して保存
-	if err := db.Select("UserID", "Role", "Sentiment", "SentimentScore", "Explanation", "PraiseOrAdvice").Create(&msg).Error; err != nil {
-		fmt.Println("DB保存失敗:", err)
+		aiMsg := model.Message{
+			UserID:         user.ID,
+			Role:           ASSISTANT_ROLE,
+			Sentiment:      result.Sentiment,
+			SentimentScore: result.SentimentScore,
+			Explanation:    result.Explanation,
+			PraiseOrAdvice: result.PraiseOrAdvice,
+		}
+
+		if err := tx.Select("UserID", "Role", "Sentiment", "SentimentScore", "Explanation", "PraiseOrAdvice").
+			Create(&aiMsg).Error; err != nil {
+			fmt.Println("AIメッセージ保存失敗:", err)
+			return err
+		}
+
+		// 全部成功したらnil返す（→コミット）
+		return nil
+	})
+
+	if err != nil {
+		fmt.Println("トランザクション失敗:", err)
 		return model.SentimentResult{Explanation: "データベース保存に失敗しました"}
 	}
+
 	return result
 }

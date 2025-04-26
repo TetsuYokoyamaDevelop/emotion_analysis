@@ -18,7 +18,7 @@ func SetupRouter(db *gorm.DB) *gin.Engine {
 	r.POST("/users/registration", middleware.AuthMiddleware(), userHandler.UserRegistHandler)
 	// 感情分析 (JWTトークン認証)
 	r.POST("/analyze", middleware.TokenMiddleware(), analyzeHandler.Analyze)
-
+	// 履歴取得 (JWTトークン認証)
 	r.GET("/history", middleware.TokenMiddleware(), analyzeHandler.GetHistory)
 
 	return r
