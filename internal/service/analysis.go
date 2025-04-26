@@ -105,38 +105,51 @@ func AnalyzeText(text string, userEmail string, db *gorm.DB) model.SentimentResu
 		}
 	}
 
-	var user model.User
-	if err := db.Where("email = ?", userEmail).First(&user).Error; err != nil {
-		fmt.Println("ユーザーIDが見つかりません:", err)
-		return model.SentimentResult{Explanation: "ユーザーIDが見つかりません"}
-	}
-	// ユーザーのメッセージを保存
-	userMsg := model.Message{
-		UserID:         user.ID, // ユーザー構造体からID取る
-		Role:           USER_ROLE,
-		Sentiment:      result.Sentiment,
-		SentimentScore: result.SentimentScore,
-		Explanation:    text,
-		PraiseOrAdvice: "",
+	err = db.Transaction(func(tx *gorm.DB) error {
+		var user model.User
+		if err := tx.Where("email = ?", userEmail).First(&user).Error; err != nil {
+			fmt.Println("ユーザーIDが見つかりません:", err)
+			return err
+		}
+
+		userMsg := model.Message{
+			UserID:         user.ID,
+			Role:           USER_ROLE,
+			Sentiment:      result.Sentiment,
+			SentimentScore: result.SentimentScore,
+			Explanation:    text,
+			PraiseOrAdvice: "",
+		}
+
+		if err := tx.Select("UserID", "Role", "Sentiment", "SentimentScore", "Explanation", "PraiseOrAdvice").
+			Create(&userMsg).Error; err != nil {
+			fmt.Println("ユーザーメッセージ保存失敗:", err)
+			return err
+		}
+
+		aiMsg := model.Message{
+			UserID:         user.ID,
+			Role:           ASSISTANT_ROLE,
+			Sentiment:      result.Sentiment,
+			SentimentScore: result.SentimentScore,
+			Explanation:    result.Explanation,
+			PraiseOrAdvice: result.PraiseOrAdvice,
+		}
+
+		if err := tx.Select("UserID", "Role", "Sentiment", "SentimentScore", "Explanation", "PraiseOrAdvice").
+			Create(&aiMsg).Error; err != nil {
+			fmt.Println("AIメッセージ保存失敗:", err)
+			return err
+		}
+
+		// 全部成功したらnil返す（→コミット）
+		return nil
+	})
+
+	if err != nil {
+		fmt.Println("トランザクション失敗:", err)
+		return model.SentimentResult{Explanation: "データベース保存に失敗しました"}
 	}
 
-	if err := db.Select("UserID", "Role", "Sentiment", "SentimentScore", "Explanation", "PraiseOrAdvice").Create(&userMsg).Error; err != nil {
-		fmt.Println("DB保存失敗:", err)
-		return model.SentimentResult{Explanation: "データベース保存に失敗しました"}
-	}
-	// AIのメッセージも保存
-	aiMsg := model.Message{
-		UserID:         user.ID, // ユーザー構造体からID取る
-		Role:           ASSISTANT_ROLE,
-		Sentiment:      result.Sentiment,
-		SentimentScore: result.SentimentScore,
-		Explanation:    result.Explanation,
-		PraiseOrAdvice: result.PraiseOrAdvice,
-	}
-	// 必要なカラムだけ指定して保存
-	if err := db.Select("UserID", "Role", "Sentiment", "SentimentScore", "Explanation", "PraiseOrAdvice").Create(&aiMsg).Error; err != nil {
-		fmt.Println("DB保存失敗:", err)
-		return model.SentimentResult{Explanation: "データベース保存に失敗しました"}
-	}
 	return result
 }
