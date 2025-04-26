@@ -118,7 +118,7 @@ func AnalyzeText(text string, userEmail string, db *gorm.DB) model.SentimentResu
 			Text:   text,
 		}
 
-		if err := tx.Select("UserID", "Role", "Sentiment", "SentimentScore", "Explanation", "PraiseOrAdvice").
+		if err := tx.Select("UserID", "Role", "Text").
 			Create(&userMsg).Error; err != nil {
 			fmt.Println("ユーザーメッセージ保存失敗:", err)
 			return err
