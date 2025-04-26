@@ -8,6 +8,7 @@ type Message struct {
 	UserID         uint      `gorm:"not null;index" json:"user_id"`
 	User           User      `gorm:"foreignKey:UserID" json:"-"`
 	Role           int       `gorm:"not null;check:role IN (1,2)" json:"role"` // 1=user, 2=assistant
+	Text           string    `gorm:"type:text" json:"text"`
 	Sentiment      string    `gorm:"size:50" json:"sentiment"`
 	SentimentScore float64   `gorm:"type:float" json:"sentimentScore"`
 	Explanation    string    `gorm:"type:text" json:"explanation"`

@@ -113,12 +113,9 @@ func AnalyzeText(text string, userEmail string, db *gorm.DB) model.SentimentResu
 		}
 
 		userMsg := model.Message{
-			UserID:         user.ID,
-			Role:           USER_ROLE,
-			Sentiment:      result.Sentiment,
-			SentimentScore: result.SentimentScore,
-			Explanation:    text,
-			PraiseOrAdvice: "",
+			UserID: user.ID,
+			Role:   USER_ROLE,
+			Text:   text,
 		}
 
 		if err := tx.Select("UserID", "Role", "Sentiment", "SentimentScore", "Explanation", "PraiseOrAdvice").
