@@ -62,3 +62,11 @@ func TokenMiddleware() gin.HandlerFunc {
 		c.Next()
 	}
 }
+
+func UserEmail(c *gin.Context) (string, bool, string) {
+	userEmail, exists := c.Get("userEmail")
+	if !exists {
+		return "", false, "User not authenticated"
+	}
+	return userEmail.(string), true, ""
+}
