@@ -19,5 +19,7 @@ func SetupRouter(db *gorm.DB) *gin.Engine {
 	// 感情分析 (JWTトークン認証)
 	r.POST("/analyze", middleware.TokenMiddleware(), analyzeHandler.Analyze)
 
+	r.GET("/history", middleware.TokenMiddleware(), analyzeHandler.GetHistory)
+
 	return r
 }
