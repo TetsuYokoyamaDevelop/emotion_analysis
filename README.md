@@ -55,7 +55,7 @@ ECS (Fargate)で新しいタスクを起動
 
 タスク定義は ecs-task-def-template.jsonから作成
 
-キー技術
+### キー技術
 
 Go 1.22
 
@@ -73,7 +73,7 @@ Terraform (AWS ECS/ECR/Fargate等)
 
 GitHub Actions
 
-ブラウザーで動作確認
+### ブラウザーで動作確認
 
 /analyze にPOSTして感情分析結果を取得する
 
@@ -83,7 +83,7 @@ GitHub Actions
 
 /history にGETして履歴を取得
 
-注意
+### 注意
 
 .env や GitHub Secretsで別途API KeyとDB設定の管理が必要
 
