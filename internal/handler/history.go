@@ -9,32 +9,26 @@ import (
 	"gorm.io/gorm"
 )
 
-type AnalyzeHandler struct {
+type HistoryHandler struct {
 	DB *gorm.DB
 }
 
 // ここでPOST/analyzeを受ける
-func (h AnalyzeHandler) Analyze(c *gin.Context) {
-	var input struct {
-		Text string `json:"text"`
-	}
-
-	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
-		return
-	}
-
+func (h AnalyzeHandler) GetHistory(c *gin.Context) {
 	userEmail, exists := c.Get("userEmail")
 	if !exists {
 		fmt.Println("ユーザーのメールが見つかりません")
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 	}
-
 	userEmailStr, ok := userEmail.(string)
 	if !ok {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to process user email"})
 		return
 	}
-	result := service.AnalyzeText(input.Text, userEmailStr, h.DB)
+	result, err := service.History(userEmailStr, h.DB)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve history"})
+		return
+	}
 	c.JSON(http.StatusOK, result)
 }

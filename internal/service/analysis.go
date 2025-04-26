@@ -10,9 +10,15 @@ import (
 	"strconv"
 
 	"github.com/TetsuYokoyamaDevelop/emotion_analysis.git/internal/model"
+	"gorm.io/gorm"
 )
 
-func AnalyzeText(text string) model.SentimentResult {
+const (
+	ASSISTANT_ROLE = 2
+	USER_ROLE      = 1
+)
+
+func AnalyzeText(text string, userEmail string, db *gorm.DB) model.SentimentResult {
 	apiKey := os.Getenv("CUSTOM_OPENAI_KEY")
 	if apiKey == "" {
 		fmt.Println("APIキーが設定されてません")
@@ -99,5 +105,27 @@ func AnalyzeText(text string) model.SentimentResult {
 		}
 	}
 
+	var user model.User
+	if err := db.Where("email = ?", userEmail).First(&user).Error; err != nil {
+		fmt.Println("ユーザーIDが見つかりません:", err)
+		return model.SentimentResult{Explanation: "ユーザーIDが見つかりません"}
+	}
+
+	msg := model.Message{
+		UserID:         user.ID, // ユーザー構造体からID取る
+		Role:           ASSISTANT_ROLE,
+		Sentiment:      result.Sentiment,
+		SentimentScore: result.SentimentScore,
+		Explanation:    result.Explanation,
+		PraiseOrAdvice: result.PraiseOrAdvice,
+	}
+
+	// db.Saveかdb.Createで保存してね！
+
+	// 必要なカラムだけ指定して保存
+	if err := db.Select("UserID", "Role", "Sentiment", "SentimentScore", "Explanation", "PraiseOrAdvice").Create(&msg).Error; err != nil {
+		fmt.Println("DB保存失敗:", err)
+		return model.SentimentResult{Explanation: "データベース保存に失敗しました"}
+	}
 	return result
 }
