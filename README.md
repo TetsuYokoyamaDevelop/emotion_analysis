@@ -17,7 +17,10 @@ Docker / ECS / GitHub Actions / Terraform を利用した自動デプロイパ�
 │   ├── model/                # データベースモデル
 │   └── service/              # ビジネスロジック
 ├── routes/                      # APIルーティング設定
-├── .github/workflows/deploy.yml  # GitHub Actions デプロイワークフロー
+├── .github/
+│   └── workflows/
+│       ├── deploy.yml           # デプロイワークフロー
+│       └── test.yml             # テストワークフロー
 ├── ecs-task-def-template.json    # ECSタスク定義テンプレート
 ├── docker-compose.yml            # Docker構成
 ├── Dockerfile                    # Dockerイメージ構築
