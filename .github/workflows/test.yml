@@ -61,7 +61,7 @@ jobs:
       - name: Install dependencies
         run: |
           go mod download
-          go install github.com/DATA-DOG/go-sqlmock@latest
+          go mod tidy
 
       - name: Wait for MySQL
         run: |
@@ -86,16 +86,20 @@ jobs:
 
       - name: Run integration tests
         run: |
-          go test -v ./internal/handler/... -coverprofile=coverage.out
+          go test -v ./internal/handler/... -coverprofile=coverage_integration.out
+
+      - name: Run all tests
+        run: |
+          go test -v ./... -coverprofile=coverage_all.out
 
       - name: Check test coverage
         run: |
-          go tool cover -func=coverage.out
+          go tool cover -func=coverage_all.out
           
       - name: Upload coverage to Codecov (optional)
         uses: codecov/codecov-action@v3
         with:
-          file: ./coverage.out
+          file: ./coverage_all.out
           fail_ci_if_error: false
 
       # Dockerビルドのテスト
@@ -106,15 +110,16 @@ jobs:
       - name: Run Docker container tests
         run: |
           # コンテナ内でテストを実行
-          docker run --rm -e APP_ENV=test \
-            -e DB_HOST=host.docker.internal \
+          docker run --rm --network host \
+            -e APP_ENV=test \
+            -e DB_HOST=localhost \
             -e DB_USER=testuser \
             -e DB_PASS=testpassword \
             -e DB_NAME=testdb \
             -e CUSTOM_OPENAI_KEY=test-api-key \
             -e PRIVATE_API_KEY=test-private-key \
             -e JWT_SECRET=test-jwt-secret \
-            emotion_analysis-test go test -v ./...
+            emotion_analysis-test sh -c "go test -v ./..."
 
   lint:
     runs-on: ubuntu-latest
@@ -126,6 +131,11 @@ jobs:
         uses: actions/setup-go@v4
         with:
           go-version: '1.23'
+
+      - name: Install dependencies
+        run: |
+          go mod download
+          go mod tidy
 
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v3
