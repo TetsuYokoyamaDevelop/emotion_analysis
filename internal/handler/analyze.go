@@ -3,6 +3,7 @@ package handler
 import (
 	"fmt"
 	"net/http"
+	"os"
 
 	"github.com/TetsuYokoyamaDevelop/emotion_analysis.git/internal/service"
 	"github.com/gin-gonic/gin"
@@ -35,6 +36,9 @@ func (h AnalyzeHandler) Analyze(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to process user email"})
 		return
 	}
-	result := service.AnalyzeText(input.Text, userEmailStr, h.DB)
+	result := service.AnalyzeText(input.Text, userEmailStr, h.DB, service.Config{
+		APIEndpoint: "https://api.openai.com/v1/chat/completions",
+		APIKey:      os.Getenv("CUSTOM_OPENAI_KEY"),
+	})
 	c.JSON(http.StatusOK, result)
 }

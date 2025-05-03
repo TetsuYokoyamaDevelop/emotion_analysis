@@ -18,9 +18,13 @@ const (
 	USER_ROLE      = 1
 )
 
-func AnalyzeText(text string, userEmail string, db *gorm.DB) model.SentimentResult {
-	apiKey := os.Getenv("CUSTOM_OPENAI_KEY")
-	if apiKey == "" {
+type Config struct {
+	APIEndpoint string
+	APIKey      string
+}
+
+func AnalyzeText(text string, userEmail string, db *gorm.DB, config Config) model.SentimentResult {
+	if config.APIKey == "" {
 		fmt.Println("APIキーが設定されてません")
 		return model.SentimentResult{Explanation: "APIキーが設定されていません"}
 	}
@@ -64,8 +68,8 @@ func AnalyzeText(text string, userEmail string, db *gorm.DB) model.SentimentResu
 
 	jsonPayload, _ := json.Marshal(payload)
 
-	req, _ := http.NewRequest("POST", "https://api.openai.com/v1/chat/completions", bytes.NewBuffer(jsonPayload))
-	req.Header.Set("Authorization", "Bearer "+apiKey)
+	req, _ := http.NewRequest("POST", config.APIEndpoint, bytes.NewBuffer(jsonPayload))
+	req.Header.Set("Authorization", "Bearer "+config.APIKey)
 	req.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{}
