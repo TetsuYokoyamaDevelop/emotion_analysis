@@ -1,71 +1,26 @@
-// internal/service/test_helper.go
+// internal/service/emotion_test.go
 package service
 
 import (
-	"encoding/json"
-	"net/http"
-	"net/http/httptest"
 	"testing"
 )
 
-// MockOpenAIServer はOpenAI APIのモックサーバーを作成する
-func MockOpenAIServer(t *testing.T, sentiment string, score float64, explanation, advice string) *httptest.Server {
-	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// リクエストの検証
-		if r.Method != "POST" {
-			t.Errorf("Expected POST method, got %s", r.Method)
-		}
-
-		// モックレスポンスを作成
-		mockResponse := createMockOpenAIResponse(sentiment, score, explanation, advice)
-
-		responseJSON, err := json.Marshal(mockResponse)
-		if err != nil {
-			t.Fatalf("Failed to marshal response: %v", err)
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		w.Write(responseJSON)
-	}))
+// 基本的なテストで動作確認
+func TestBasic(t *testing.T) {
+	t.Log("Test is running")
 }
 
-// createMockOpenAIResponse はテスト用のOpenAIレスポンスを作成する
-func createMockOpenAIResponse(sentiment string, score float64, explanation, advice string) map[string]interface{} {
-	arguments := map[string]interface{}{
-		"sentiment":        sentiment,
-		"sentimentScore":   score,
-		"explanation":      explanation,
-		"praise_or_advice": advice,
+// APIキーのチェックのみのシンプルなテスト
+func TestAnalyzeText_MissingAPIKey(t *testing.T) {
+	config := Config{
+		APIEndpoint: "http://example.com",
+		APIKey:      "", // 空のAPIキー
 	}
 
-	argumentsJSON, _ := json.Marshal(arguments)
+	// データベースはnilで渡す（このテストでは使用しない）
+	result := AnalyzeText("テスト", "test@example.com", nil, config)
 
-	return map[string]interface{}{
-		"choices": []map[string]interface{}{
-			{
-				"message": map[string]interface{}{
-					"tool_calls": []map[string]interface{}{
-						{
-							"function": map[string]interface{}{
-								"arguments": string(argumentsJSON),
-							},
-						},
-					},
-				},
-			},
-		},
+	if result.Explanation != "APIキーが設定されていません" {
+		t.Errorf("Expected 'APIキーが設定されていません', got '%s'", result.Explanation)
 	}
-}
-
-// compareFloat64 は浮動小数点数の比較を行うヘルパー関数
-func compareFloat64(t *testing.T, expected, actual float64, tolerance float64) bool {
-	diff := expected - actual
-	if diff < 0 {
-		diff = -diff
-	}
-	if diff > tolerance {
-		t.Errorf("Expected %f, got %f (difference: %f)", expected, actual, diff)
-		return false
-	}
-	return true
 }

@@ -1,0 +1,145 @@
+name: Run Tests
+
+on:
+  push:
+    branches:
+      - develop
+  pull_request:
+    branches:
+      - develop
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: testpassword
+          MYSQL_DATABASE: testdb
+          MYSQL_USER: testuser
+          MYSQL_PASSWORD: testpassword
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+
+    env:
+      DB_HOST: localhost
+      DB_USER: testuser
+      DB_PASS: testpassword
+      DB_NAME: testdb
+      DB_PORT: 3306
+      CUSTOM_OPENAI_KEY: test-api-key
+      PRIVATE_API_KEY: test-private-key
+      JWT_SECRET: test-jwt-secret
+      APP_ENV: test
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.23'  # Goのバージョンはプロジェクトに合わせて調整
+
+      - name: Cache Go modules
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Install dependencies
+        run: |
+          go mod download
+          go install github.com/DATA-DOG/go-sqlmock@latest
+
+      - name: Wait for MySQL
+        run: |
+          for i in {1..30}; do
+            if mysqladmin ping -h"127.0.0.1" --silent; then
+              echo "MySQL is up"
+              break
+            fi
+            echo "Waiting for MySQL..."
+            sleep 2
+          done
+
+      - name: Run database migrations (if any)
+        run: |
+          # 必要に応じてマイグレーションスクリプトを実行
+          # go run cmd/migrate/main.go up
+          echo "Skipping migrations for now"
+
+      - name: Run unit tests
+        run: |
+          go test -v ./internal/service/... -coverprofile=coverage.out
+
+      - name: Run integration tests
+        run: |
+          go test -v ./internal/handler/... -coverprofile=coverage.out
+
+      - name: Check test coverage
+        run: |
+          go tool cover -func=coverage.out
+          
+      - name: Upload coverage to Codecov (optional)
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage.out
+          fail_ci_if_error: false
+
+      # Dockerビルドのテスト
+      - name: Build Docker image
+        run: |
+          docker build -t emotion_analysis-test .
+
+      - name: Run Docker container tests
+        run: |
+          # コンテナ内でテストを実行
+          docker run --rm -e APP_ENV=test \
+            -e DB_HOST=host.docker.internal \
+            -e DB_USER=testuser \
+            -e DB_PASS=testpassword \
+            -e DB_NAME=testdb \
+            -e CUSTOM_OPENAI_KEY=test-api-key \
+            -e PRIVATE_API_KEY=test-private-key \
+            -e JWT_SECRET=test-jwt-secret \
+            emotion_analysis-test go test -v ./...
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.23'
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v3
+        with:
+          version: latest
+          args: --timeout=5m
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Run Gosec Security Scanner
+        uses: securego/gosec@master
+        with:
+          args: ./...
