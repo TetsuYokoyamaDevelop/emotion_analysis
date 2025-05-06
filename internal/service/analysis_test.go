@@ -26,11 +26,11 @@ func getEnvOrDefault(key, defaultValue string) string {
 
 func setupTestDB(t *testing.T) *gorm.DB {
 	// 環境変数から接続情報を取得
-	dbHost := getEnvOrDefault("TEST_DB_HOST", "localhost")
-	dbPort := getEnvOrDefault("TEST_DB_PORT", "3306")
-	dbUser := getEnvOrDefault("TEST_DB_USER", "root")
-	dbPassword := getEnvOrDefault("TEST_DB_PASSWORD", "")
-	dbName := getEnvOrDefault("TEST_DB_NAME", "emotion_analysis_test")
+	dbHost := getEnvOrDefault("DB_HOST", "localhost")
+	dbPort := getEnvOrDefault("DB_PORT", "3306")
+	dbUser := getEnvOrDefault("DB_USER", "testuser")
+	dbPassword := getEnvOrDefault("DB_PASS", "testpassword")
+	dbName := getEnvOrDefault("DB_NAME", "testdb")
 
 	// テスト用のデータベース接続文字列
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
